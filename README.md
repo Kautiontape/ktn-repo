@@ -16,8 +16,8 @@ Server = https://github.com/Kautiontape/ktn-repo/releases/download/repo
 Trust the signing key, then sync:
 
 ```sh
-sudo pacman-key --recv-keys C20F8574816A1B67C81E6F829DA4E0459723DB07
-sudo pacman-key --lsign-key C20F8574816A1B67C81E6F829DA4E0459723DB07
+sudo pacman-key --recv-keys 36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8
+sudo pacman-key --lsign-key 36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8
 sudo pacman -Sy
 ```
 
@@ -28,10 +28,12 @@ sudo pacman -Sy
 | `yeetbin-app` | [yeetbin-app](https://github.com/Kautiontape/yeetbin-app) | here, from the tagged tarball |
 | `triliumnext-ktn-bin` | [trilium](https://github.com/Kautiontape/trilium) | in that repo, pulled in prebuilt |
 
-Anything in `packages/<name>/PKGBUILD` is built here. Anything listed in `external.txt` is
-downloaded already-built and already-signed, for projects whose build toolchain lives
-elsewhere — trilium needs its Electron pipeline, so duplicating that here would be
-pointless.
+Anything in `packages/<name>/PKGBUILD` is built here. Anything in `external.txt` is
+downloaded already built, for projects whose toolchain lives elsewhere — trilium needs its
+Electron pipeline, so duplicating that here would be pointless.
+
+Every package is re-signed with this repo's key, upstream signatures discarded, so clients
+trust exactly one key no matter where a package was built.
 
 Declared `depends`/`makedepends` are installed automatically, so adding a package needs no
 workflow change.
@@ -81,24 +83,17 @@ send a `repository_dispatch` of type `package-updated`.
 
 ## Secrets
 
-Both hold the `Shawn Squire (ktn repo)` key (`C20F8574816A1B67C81E6F829DA4E0459723DB07`),
-the same one that signs the existing packages:
-
-Do not pipe `gpg` straight into `gh secret set`. If the pinentry prompt is cancelled,
-`gpg` writes nothing and `gh` stores an empty secret that looks set but is not.
+One secret: `ARCH_REPO_GPG_KEY`, holding the `Shawn Squire (ktn repo 2026-07-30)` key
+(`36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8`). The key has no passphrase, so there is
+nothing else to store and nothing to lose.
 
 ```sh
-gpg --export-secret-keys --armor C20F8574816A1B67C81E6F829DA4E0459723DB07 > /tmp/k.asc
-head -c 40 /tmp/k.asc   # must print: -----BEGIN PGP PRIVATE KEY BLOCK-----
-gh secret set ARCH_REPO_GPG_KEY --repo Kautiontape/ktn-repo < /tmp/k.asc
-shred -u /tmp/k.asc
-
-read -rsp 'passphrase: ' P && printf '%s' "$P" \
-  | gh secret set ARCH_REPO_GPG_PASSPHRASE --repo Kautiontape/ktn-repo && unset P
+gpg --export-secret-keys --armor 36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8 \
+  | gh secret set ARCH_REPO_GPG_KEY --repo Kautiontape/ktn-repo
 ```
 
-The workflow rejects an empty or malformed key and test-signs before building, so a bad
-secret fails in seconds with a clear message.
+The workflow rejects a key that is empty or not a PGP block, and test-signs immediately
+after import, so a bad secret fails in seconds.
 
 ## Notes
 

@@ -38,7 +38,7 @@ jobs:
           grep -vE '^\s*(#|$)' external.txt | while read -r repo tag; do
             echo "::group::$repo@$tag"
             gh release download "$tag" --repo "$repo" \
-              -p '*.pkg.tar.zst' -p '*.pkg.tar.zst.sig' -D build/out --clobber
+              -p '*.pkg.tar.zst' -D build/out --clobber
             echo "::endgroup::"
           done
           ls -la build/out
@@ -46,7 +46,6 @@ jobs:
       - name: Build, sign and index
         env:
           GPG_PRIVATE_KEY: ${{ secrets.ARCH_REPO_GPG_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.ARCH_REPO_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
           # A cancelled 'gpg --export | gh secret set' pipe stores an empty secret, so
@@ -55,28 +54,23 @@ jobs:
             echo "::error::ARCH_REPO_GPG_KEY is empty or not a PGP private key block — see README.md"
             exit 1
           fi
-          if [[ -z "${GPG_PASSPHRASE:-}" ]]; then
-            echo "::error::ARCH_REPO_GPG_PASSPHRASE is empty — see README.md"
-            exit 1
-          fi
 
           docker run --rm \
             -v "$PWD:/work" \
-            -e GPG_PRIVATE_KEY -e GPG_PASSPHRASE \
+            -e GPG_PRIVATE_KEY \
             -e REPO_NAME="$REPO_NAME" \
             archlinux:base-devel bash -euo pipefail -c '
               pacman -Sy --noconfirm >/dev/null
 
-              # Prove the key and passphrase work before spending time on builds.
+              # Prove the key works before spending time on builds.
               export GNUPGHOME=/tmp/gnupg
               mkdir -p "$GNUPGHOME" && chmod 700 "$GNUPGHOME"
               echo "$GPG_PRIVATE_KEY" | gpg --batch --import
               gpg --list-secret-keys --with-colons | grep -q "^sec" \
                 || { echo "::error::no secret key after import"; exit 1; }
               echo canary > /tmp/canary
-              gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
-                  --detach-sign --no-armor /tmp/canary \
-                || { echo "::error::signing failed - wrong ARCH_REPO_GPG_PASSPHRASE?"; exit 1; }
+              gpg --batch --yes --detach-sign --no-armor /tmp/canary \
+                || { echo "::error::signing failed - is the key passphrase-protected?"; exit 1; }
               echo "signing key verified"
 
               # Install every package'"'"'s declared deps, so adding a package needs no
@@ -99,10 +93,11 @@ jobs:
               done
 
               cd /work/build/out
+              # Re-sign everything, discarding upstream signatures, so this key is the
+              # only one clients need to trust.
               for pkg in *.pkg.tar.zst; do
-                [[ -f "$pkg.sig" ]] && continue # externals arrive signed
-                gpg --batch --yes --pinentry-mode loopback \
-                    --passphrase "$GPG_PASSPHRASE" --detach-sign --no-armor "$pkg"
+                rm -f "$pkg.sig"
+                gpg --batch --yes --detach-sign --no-armor "$pkg"
               done
 
               repo-add "${REPO_NAME}.db.tar.gz" *.pkg.tar.zst
@@ -114,8 +109,7 @@ jobs:
               cp "${REPO_NAME}.files.tar.gz" "${REPO_NAME}.files"
               for f in "${REPO_NAME}".db "${REPO_NAME}".db.tar.gz \
                        "${REPO_NAME}".files "${REPO_NAME}".files.tar.gz; do
-                gpg --batch --yes --pinentry-mode loopback \
-                    --passphrase "$GPG_PASSPHRASE" --detach-sign --no-armor "$f"
+                gpg --batch --yes --detach-sign --no-armor "$f"
               done
 
               chmod -R a+r /work/build/out
