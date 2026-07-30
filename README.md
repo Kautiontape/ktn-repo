@@ -84,12 +84,21 @@ send a `repository_dispatch` of type `package-updated`.
 Both hold the `Shawn Squire (ktn repo)` key (`C20F8574816A1B67C81E6F829DA4E0459723DB07`),
 the same one that signs the existing packages:
 
-```sh
-gpg --export-secret-keys --armor C20F8574816A1B67C81E6F829DA4E0459723DB07 \
-  | gh secret set ARCH_REPO_GPG_KEY --repo Kautiontape/ktn-repo
+Do not pipe `gpg` straight into `gh secret set`. If the pinentry prompt is cancelled,
+`gpg` writes nothing and `gh` stores an empty secret that looks set but is not.
 
-gh secret set ARCH_REPO_GPG_PASSPHRASE --repo Kautiontape/ktn-repo
+```sh
+gpg --export-secret-keys --armor C20F8574816A1B67C81E6F829DA4E0459723DB07 > /tmp/k.asc
+head -c 40 /tmp/k.asc   # must print: -----BEGIN PGP PRIVATE KEY BLOCK-----
+gh secret set ARCH_REPO_GPG_KEY --repo Kautiontape/ktn-repo < /tmp/k.asc
+shred -u /tmp/k.asc
+
+read -rsp 'passphrase: ' P && printf '%s' "$P" \
+  | gh secret set ARCH_REPO_GPG_PASSPHRASE --repo Kautiontape/ktn-repo && unset P
 ```
+
+The workflow rejects an empty or malformed key and test-signs before building, so a bad
+secret fails in seconds with a clear message.
 
 ## Notes
 
