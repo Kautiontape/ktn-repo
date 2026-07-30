@@ -1,0 +1,5 @@
+# Prebuilt, already-signed packages pulled into the index instead of built here.
+# Format: <owner/repo> <release-tag>
+#
+# trilium builds its own package because the Electron toolchain lives in that repo.
+Kautiontape/trilium ktn-repo

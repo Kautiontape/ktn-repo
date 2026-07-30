@@ -1,0 +1,139 @@
+name: publish
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+  repository_dispatch:
+    types: [package-updated]
+  schedule:
+    - cron: '17 6 * * *' # picks up new external builds
+
+# Sole writer of the index. Queue rather than cancel: a cancelled run can leave the
+# release holding a database that disagrees with its packages.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  REPO_NAME: ktn
+  RELEASE_TAG: repo
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch external packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/out
+          grep -vE '^\s*(#|$)' external.txt | while read -r repo tag; do
+            echo "::group::$repo@$tag"
+            gh release download "$tag" --repo "$repo" \
+              -p '*.pkg.tar.zst' -p '*.pkg.tar.zst.sig' -D build/out --clobber
+            echo "::endgroup::"
+          done
+          ls -la build/out
+
+      - name: Build, sign and index
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.ARCH_REPO_GPG_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.ARCH_REPO_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GPG_PRIVATE_KEY:-}" ]]; then
+            echo "::error::ARCH_REPO_GPG_KEY is not set — see README.md"
+            exit 1
+          fi
+
+          docker run --rm \
+            -v "$PWD:/work" \
+            -e GPG_PRIVATE_KEY -e GPG_PASSPHRASE \
+            -e REPO_NAME="$REPO_NAME" \
+            archlinux:base-devel bash -euo pipefail -c '
+              pacman -Sy --noconfirm >/dev/null
+
+              # Install every package'"'"'s declared deps, so adding a package needs no
+              # workflow change.
+              for d in /work/packages/*/; do
+                ( set +u; source "$d/PKGBUILD"
+                  printf "%s\n" "${makedepends[@]:-}" "${depends[@]:-}" )
+              done | sort -u | grep -v "^$" \
+                | xargs -r pacman -S --needed --noconfirm --asdeps >/dev/null
+
+              useradd -m builder
+              chown -R builder:builder /work
+
+              for d in /work/packages/*/; do
+                echo "=== building $(basename "$d") ==="
+                su builder -c "cd $d && makepkg --noconfirm --clean"
+                # !debug is set per-PKGBUILD, but never index a debug split.
+                find "$d" -maxdepth 1 -name "*.pkg.tar.zst" ! -name "*-debug-*" \
+                  -exec mv -t /work/build/out {} +
+              done
+
+              export GNUPGHOME=/tmp/gnupg
+              mkdir -p "$GNUPGHOME" && chmod 700 "$GNUPGHOME"
+              echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+              cd /work/build/out
+              for pkg in *.pkg.tar.zst; do
+                [[ -f "$pkg.sig" ]] && continue # externals arrive signed
+                gpg --batch --yes --pinentry-mode loopback \
+                    --passphrase "$GPG_PASSPHRASE" --detach-sign --no-armor "$pkg"
+              done
+
+              repo-add "${REPO_NAME}.db.tar.gz" *.pkg.tar.zst
+
+              # Releases cannot carry symlinks; replace them with real copies under the
+              # names pacman requests. Symlinks must go first or cp aborts.
+              rm -f "${REPO_NAME}.db" "${REPO_NAME}.files"
+              cp "${REPO_NAME}.db.tar.gz" "${REPO_NAME}.db"
+              cp "${REPO_NAME}.files.tar.gz" "${REPO_NAME}.files"
+              for f in "${REPO_NAME}".db "${REPO_NAME}".db.tar.gz \
+                       "${REPO_NAME}".files "${REPO_NAME}".files.tar.gz; do
+                gpg --batch --yes --pinentry-mode loopback \
+                    --passphrase "$GPG_PASSPHRASE" --detach-sign --no-armor "$f"
+              done
+
+              chmod -R a+r /work/build/out
+              echo "=== indexed ==="
+              bsdtar -tf "${REPO_NAME}.db.tar.gz" | grep "/$"
+            '
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd build/out
+
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --title "ktn pacman repository" \
+              --notes "Signed Arch repository for Kautiontape packages. Setup: README.md" \
+              --prerelease
+          fi
+
+          gh release upload "$RELEASE_TAG" --clobber *.pkg.tar.zst *.pkg.tar.zst.sig \
+            "${REPO_NAME}".db "${REPO_NAME}".db.sig \
+            "${REPO_NAME}".db.tar.gz "${REPO_NAME}".db.tar.gz.sig \
+            "${REPO_NAME}".files "${REPO_NAME}".files.sig \
+            "${REPO_NAME}".files.tar.gz "${REPO_NAME}".files.tar.gz.sig
+
+          # Drop assets for versions no longer in the index.
+          ls *.pkg.tar.zst > /tmp/current
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
+            | grep -E '\.pkg\.tar\.zst(\.sig)?$' \
+            | while read -r asset; do
+                grep -qx "${asset%.sig}" /tmp/current && continue
+                echo "Deleting superseded asset: $asset"
+                gh release delete-asset "$RELEASE_TAG" "$asset" --yes || true
+              done
