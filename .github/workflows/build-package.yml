@@ -118,9 +118,11 @@ jobs:
 
           # Keep only the package just built, so the release can't grow without bound.
           current=$(find . -maxdepth 1 -name "${PKGNAME}-*.pkg.tar.zst" -printf '%f\n' | head -1)
+          # `|| true`: a grep that matches nothing (no stale assets) is success, not a
+          # pipefail error.
           gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
-            | grep -E "^${PKGNAME}-[^-]+-[^-]+-[^-]+\.pkg\.tar\.zst$" \
-            | grep -vx "$current" \
+            | { grep -E "^${PKGNAME}-[^-]+-[^-]+-[^-]+\.pkg\.tar\.zst$" || true; } \
+            | { grep -vx "$current" || true; } \
             | while read -r stale; do
                 echo "Deleting superseded asset: $stale"
                 gh release delete-asset "$RELEASE_TAG" "$stale" --yes || true
