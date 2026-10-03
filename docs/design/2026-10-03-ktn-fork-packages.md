@@ -243,3 +243,30 @@ cursor onto that monitor).
 A dotfiles `chooser_cmd` could show thumbnails instead of a text list. `grim -T <identifier>`
 (windows, under 100 ms each) and `grim -o <output>` (monitors) produce the images, and rofi's dmenu
 mode can show them as icons. Independent of the first-frame issue above.
+
+## Rollout status (2026-10-03)
+
+Phases 1–5 are done. `[ktn]` carries `triliumnext-ktn-bin`, `yeetbin-app`, `vesktop-ktn` and
+`xdg-desktop-portal-wlr-ktn`, and kautiontape.com/arch/ is live and linked from the landing page.
+
+Changes from the plan, and lessons:
+- **pkgver uses seconds** (`%Y%m%d%H%M%S`). With minutes, two commits made in the same minute
+  ordered by sha, and a local build of an earlier commit sorted above the CI build.
+- **build-package.yml fixes from the first real runs**:
+  - the upload step needs `GH_REPO`, because `out/` isn't a checkout;
+  - the stale-asset prune must tolerate grep matching nothing (`pipefail`);
+  - the container hands the workspace back to the runner user, or `actions/checkout`'s post
+    step can't clean `.git/config`.
+- **Forks inherit upstream's `release: published` workflows.** Our `ktn-repo` pre-release counts
+  as published. Bring a new fork up with Actions disabled, push `ktn`, set it as default, enable
+  Actions, `gh workflow disable` every upstream workflow, then dispatch `ktn package` by hand. A
+  fork whose upstream has no workflows needs its default branch flipped away and back before
+  GitHub indexes the new ones.
+- **Trilium deploys on any push to `ktn`.** `ktn-build-publish.yml` has no `paths-ignore`, so
+  edits to its `ktn.md` need `[skip ci]` or they redeploy the server.
+- **G502 sniper → F19** must be written to an *enabled* onboard profile (the mouse runs
+  profile 1). libratbag keeps edits to disabled profiles in RAM only. See the comment in
+  `sway/config.d/65-ptt` in the dotfiles.
+
+Still open: the first-frame delay and the preview chooser (Follow-ups above), and the upstream
+xdpw PR after the patch has soaked.
