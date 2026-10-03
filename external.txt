@@ -1,7 +1,10 @@
-# Prebuilt, already-signed packages pulled into the index instead of built here.
+# Prebuilt packages pulled into the index instead of built here. Only the
+# *.pkg.tar.zst assets are downloaded; publish re-signs them with this repo's key.
+# Each repo's packaging/arch/ktn.md (and .ktn-base) feeds kautiontape.com/arch.
 # Format: <owner/repo> <release-tag>
 #
-# trilium builds its own package because the Electron toolchain lives in that repo.
+# trilium builds its own package because the Electron toolchain lives in that repo;
+# the forks build theirs with .github/workflows/build-package.yml.
 Kautiontape/trilium ktn-repo
 Kautiontape/xdg-desktop-portal-wlr ktn-repo
 Kautiontape/vesktop ktn-repo

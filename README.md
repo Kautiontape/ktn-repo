@@ -23,14 +23,13 @@ sudo pacman -Sy
 
 ## Packages
 
-| Package | Source | Built |
-|---|---|---|
-| `yeetbin-app` | [yeetbin-app](https://github.com/Kautiontape/yeetbin-app) | here, from the tagged tarball |
-| `triliumnext-ktn-bin` | [trilium](https://github.com/Kautiontape/trilium) | in that repo, pulled in prebuilt |
+The current list, with versions, last-updated dates and what each one changes, is at
+**[kautiontape.com/arch](https://kautiontape.com/arch/)**. It's generated on every publish,
+so nothing here needs updating when a package is added.
 
 Anything in `packages/<name>/PKGBUILD` is built here. Anything in `external.txt` is
-downloaded already built, for projects whose toolchain lives elsewhere — trilium needs its
-Electron pipeline, so duplicating that here would be pointless.
+downloaded already built, for projects whose toolchain lives elsewhere: forks build
+themselves with the reusable `build-package.yml`, and trilium uses its own Electron pipeline.
 
 Every package is re-signed with this repo's key, upstream signatures discarded, so clients
 trust exactly one key no matter where a package was built.
