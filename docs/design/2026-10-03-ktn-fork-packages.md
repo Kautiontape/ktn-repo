@@ -198,3 +198,48 @@ Pipeline: a `sync/**` push runs the build-only gate. The vercmp gate rejects a n
 5. **Page**: trilium's `ktn.md` ✋, the nginx alias on ktn ✋, the landing card ✋, then verify
    live.
 6. **Later**: after the xdpw patch soaks, draft the upstream PR (refs #170) for Shawn's review.
+
+## Phase 1 results (2026-10-03)
+
+- Window shares prompt once. Sessions 2 and 3 logged `restore_data.toplevel_identifier` and
+  restored with no chooser (17:18:34, 17:19:24). Monitor restore did not regress.
+- Test 2 as written does not apply, because Vesktop has no mid-share quality control. Its intent
+  (a restarted capture chain-restores) is covered: session 3 restored from session 2's re-issued
+  token.
+- `contrib/ktn/restore-test.py` in the xdpw fork drives xdpw's impl interface directly with
+  `restore_data`, with no chooser. Both kinds restore in about 2 ms and re-issue their key
+  (`toplevel_identifier` / `output_name`). Use it for regression checks and the upstream PR.
+
+## Follow-ups
+
+### First frame of an idle source waits for damage (pre-existing, not the patch)
+
+After the chooser, Vesktop's Go Live modal waits until the shared source changes, because Chromium
+needs a first frame for the thumbnail.
+- Window shares waited 15 s and 19 s (2026-10-03 17:18, 17:19), ending when focus moved.
+- **Before the patch**, a monitor share waited 10 s (DP-3, 15:14:18.9 to 15:14:28.9), and windows
+  about 8 s.
+- So any idle source is affected. A busy monitor only looks instant because something on it keeps
+  changing.
+
+Evidence the compositor is not at fault: `grim -T <id>` captured idle and hidden windows in
+41–96 ms, so sway delivers a session's first frame immediately. The delay is in xdpw's
+ext-image-copy path or in the xdpw-to-Chromium PipeWire handoff (format renegotiation spending the
+immediate first frame is the leading guess).
+
+Tooling note: xdpw's node has `object.register: false`, so `gst pipewiresrc` cannot attach by
+id/serial ("target not found"). A first-frame timing harness needs to go through the portal
+frontend's `OpenPipeWireRemote`.
+
+First step for whoever picks this up: check whether xdpw master's August 2026 frame-scheduling
+commits ("screencast: Trigger the graph from the wlr-screencopy backend", "Factor out
+wlr_frame_done") fix it. If so, the fork inherits the fix at the next upstream release.
+
+Workaround: after picking, make the source change (click into the window, scroll, or move the
+cursor onto that monitor).
+
+### Preview chooser (optional)
+
+A dotfiles `chooser_cmd` could show thumbnails instead of a text list. `grim -T <identifier>`
+(windows, under 100 ms each) and `grim -o <output>` (monitors) produce the images, and rofi's dmenu
+mode can show them as icons. Independent of the first-frame issue above.
