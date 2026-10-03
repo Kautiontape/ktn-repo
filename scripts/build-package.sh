@@ -8,7 +8,7 @@
 #                                and it builds from source=("ktn-src.tar.gz"), which
 #                                unpacks to ktn-src/ (a `git archive` of HEAD)
 #
-# pkgver = <base without v>.<HEAD committer time, UTC %Y%m%d%H%M>.g<sha7>
+# pkgver = <base without v>.<HEAD committer time, UTC %Y%m%d%H%M%S>.g<sha7>
 # Committer time rather than a commit count: a rebase-mode promote can lower the count
 # on the same base, but cherry-picks always restamp the committer time.
 #
@@ -58,7 +58,7 @@ UPSTREAM_VERSION=${BASE#v}
 [[ "$UPSTREAM_VERSION" =~ ^[0-9][0-9A-Za-z.]*$ ]] \
     || die ".ktn-base '$BASE' is not a pacman-safe version"
 
-STAMP=$(TZ=UTC git -C "$REPO" log -1 --format=%cd --date=format-local:%Y%m%d%H%M HEAD)
+STAMP=$(TZ=UTC git -C "$REPO" log -1 --format=%cd --date=format-local:%Y%m%d%H%M%S HEAD)
 SHA=$(git -C "$REPO" rev-parse --short=7 HEAD)
 PKGVER="${UPSTREAM_VERSION}.${STAMP}.g${SHA}"
 

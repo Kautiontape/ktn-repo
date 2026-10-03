@@ -94,7 +94,7 @@ The fork caller triggers on push to `ktn` (publish) and on push to `sync/**` (bu
 the promote gate). `paths-ignore` covers docs, `**/*.md` and `packaging/arch/ktn.md`, so a
 descriptor-only edit causes no rebuild. The nightly run re-renders the page instead.
 
-1. **pkgver** = `<.ktn-base without v>.<HEAD committer time UTC %Y%m%d%H%M>.g<sha7>`.
+1. **pkgver** = `<.ktn-base without v>.<HEAD committer time UTC %Y%m%d%H%M%S>.g<sha7>`.
    Not trilium's `r<count>`: rebase+promote can *lower* the commit count on the same base, while
    cherry-picks always restamp the committer time. A new upstream base outranks both.
 2. **Monotonic gate.** In the Arch container, `vercmp <new> <currently published>` must be > 0, or
