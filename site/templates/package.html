@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$name · [ktn] Arch packages</title>
+  <meta name="description" content="$meta_summary">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <div class="page">
+    <header>
+      <a class="brand" href="../">
+        <div class="brand-stripe"></div>
+        <h1><span>[ktn]</span> $name</h1>
+      </a>
+      <p class="tagline">$summary</p>
+    </header>
+
+    <section class="group">
+      <div class="copyable"><pre><code>$install</code></pre><button type="button" data-copy>copy</button></div>
+      <table class="facts">
+$facts
+      </table>
+    </section>
+
+    <section class="group prose">
+$body
+    </section>
+
+    <footer>
+      <p><a href="../">&larr; all [ktn] packages</a></p>
+      <p>From this package's <code>ktn.md</code> and the repository index.</p>
+    </footer>
+  </div>
+  <script>
+    document.querySelectorAll('[data-copy]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var text = button.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(text).then(function () {
+          button.textContent = 'copied';
+          setTimeout(function () { button.textContent = 'copy'; }, 1500);
+        });
+      });
+    });
+    document.querySelectorAll('time[data-rel]').forEach(function (el) {
+      var days = Math.floor((Date.now() - Date.parse(el.getAttribute('datetime'))) / 86400000);
+      el.title = el.textContent;
+      el.textContent = days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago';
+    });
+  </script>
+</body>
+</html>

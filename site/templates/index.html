@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[ktn] Arch packages · kautiontape</title>
+  <meta name="description" content="Signed pacman repository for Kautiontape's patched and forked Arch packages.">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+    <header>
+      <a class="brand" href="/">
+        <div class="brand-stripe"></div>
+        <h1><span>kaution</span>tape</h1>
+      </a>
+      <p class="tagline">[ktn] · patched &amp; forked arch packages</p>
+    </header>
+
+    <section class="group">
+      <div class="group-header"><h2>setup</h2></div>
+      <p class="lede">Add the repository to <code>/etc/pacman.conf</code>:</p>
+      <div class="copyable"><pre><code>$conf</code></pre><button type="button" data-copy>copy</button></div>
+      <p class="lede">Trust the signing key (<code>$key</code>), then sync:</p>
+      <div class="copyable"><pre><code>$keys</code></pre><button type="button" data-copy>copy</button></div>
+      <p class="note">Packages here replace their upstream counterparts only when you install them by name.
+        Nothing declares <code>replaces=</code>, so <code>pacman -Syu</code> never swaps a package behind your back.</p>
+    </section>
+
+    <section class="group">
+      <div class="group-header"><h2>packages · $count</h2></div>
+      <div class="grid">
+$cards
+      </div>
+    </section>
+
+    <footer>
+      <p>Generated from the repository index and each package's <code>ktn.md</code>.</p>
+      <p><a href="$repo">ktn-repo</a></p>
+    </footer>
+  </div>
+  <script>
+    document.querySelectorAll('[data-copy]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var text = button.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(text).then(function () {
+          button.textContent = 'copied';
+          setTimeout(function () { button.textContent = 'copy'; }, 1500);
+        });
+      });
+    });
+    // Built dates render as YYYY-MM-DD; upgrade them to "3 days ago" in the browser so they
+    // never go stale between nightly renders.
+    document.querySelectorAll('time[data-rel]').forEach(function (el) {
+      var days = Math.floor((Date.now() - Date.parse(el.getAttribute('datetime'))) / 86400000);
+      el.title = el.textContent;
+      el.textContent = days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago';
+    });
+  </script>
+</body>
+</html>

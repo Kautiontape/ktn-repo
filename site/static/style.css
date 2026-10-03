@@ -1,0 +1,86 @@
+/* Palette, type and card look borrowed from the kautiontape.com landing page. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --yellow: #FFD000;
+  --yellow-dim: #FFD00018;
+  --bg: #0C0C0E;
+  --bg-card: #141417;
+  --bg-card-hover: #1A1A1F;
+  --border: #2A2A30;
+  --border-hover: #3A3A42;
+  --text: #E8E8EC;
+  --text-dim: #8888A0;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+a { color: var(--yellow); }
+code { font-family: var(--mono); font-size: 0.85em; }
+.page { max-width: 860px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+
+header { margin-bottom: 2.5rem; }
+.brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;
+  text-decoration: none; color: var(--text); }
+.brand-stripe { width: 4px; height: 2.25rem; border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--yellow), var(--yellow) 3px, var(--bg) 3px, var(--bg) 6px); }
+.brand h1 { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.brand h1 span { color: var(--yellow); }
+.tagline { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim);
+  letter-spacing: 0.04em; padding-left: 1.25rem; }
+
+.group { margin-bottom: 2.5rem; }
+.group-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding-left: 0.25rem; }
+.group-header h2 { font-family: var(--mono); font-size: 0.7rem; font-weight: 500;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
+.group-header::after { content: ''; flex: 1; height: 1px;
+  background: linear-gradient(to right, var(--border), transparent); }
+.lede { font-size: 0.9rem; margin: 1rem 0 0.5rem; }
+.note { font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; margin-top: 1rem; }
+
+.copyable { position: relative; }
+.copyable pre { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 5rem 1rem 1rem; overflow-x: auto; line-height: 1.6; }
+.copyable button { position: absolute; top: 0.6rem; right: 0.6rem; font-family: var(--mono);
+  font-size: 0.7rem; background: var(--yellow-dim); color: var(--yellow); cursor: pointer;
+  border: 1px solid var(--border-hover); border-radius: 6px; padding: 0.3rem 0.6rem; }
+.copyable button:hover { border-color: var(--yellow); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+.card { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.25rem; position: relative;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  text-decoration: none; color: var(--text); transition: background 0.2s, border-color 0.2s, transform 0.2s; }
+.card:hover { background: var(--bg-card-hover); border-color: var(--border-hover); transform: translateY(-2px); }
+.card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--yellow);
+  transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease; }
+.card:hover::after { transform: scaleX(1); }
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.card-name { font-family: var(--mono); font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+.card-desc { font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
+.card-meta { font-family: var(--mono); font-size: 0.65rem; color: var(--yellow); opacity: 0.7;
+  margin-top: auto; padding-top: 0.25rem; }
+.badge { font-family: var(--mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--bg); background: var(--yellow); border-radius: 4px; padding: 0.15rem 0.4rem; }
+
+.facts { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+.facts th { text-align: left; font-family: var(--mono); font-size: 0.7rem; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim);
+  padding: 0.5rem 1rem 0.5rem 0; vertical-align: top; white-space: nowrap; width: 1%; }
+.facts td { padding: 0.5rem 0; line-height: 1.5; border-bottom: 1px solid var(--border); word-break: break-word; }
+
+.prose { line-height: 1.65; font-size: 0.95rem; }
+.prose h2 { font-family: var(--mono); font-size: 0.8rem; font-weight: 500; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-dim); margin: 2rem 0 0.75rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.25rem; }
+.prose li { margin-bottom: 0.35rem; }
+.prose code { background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 0.05rem 0.3rem; }
+
+footer { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+footer p { font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim); }
+
+@media (max-width: 580px) {
+  .page { padding: 2rem 1rem 3rem; }
+  .grid { grid-template-columns: 1fr; }
+  .brand h1 { font-size: 1.25rem; }
+}

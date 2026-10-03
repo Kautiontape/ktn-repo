@@ -145,3 +145,89 @@ jobs:
                 echo "Deleting superseded asset: $asset"
                 gh release delete-asset "$RELEASE_TAG" "$asset" --yes || true
               done
+
+  # The kautiontape.com/arch/ pages. Separate jobs so a site problem can never touch the
+  # pacman repo: by the time these run, `publish` has already shipped the index.
+  # Design: docs/design/2026-10-03-ktn-fork-packages.md.
+  site:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # .updated comes from each PKGBUILD's last commit date
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install renderer dependencies
+        run: pip install --quiet -r site/requirements.txt
+
+      - name: Gather the index and descriptors
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p site-in/desc
+          gh release download "$RELEASE_TAG" -p "${REPO_NAME}.db.tar.gz" -D site-in
+
+          # Built here: ktn-repo rebuilds these nightly with the same version, so their
+          # build date says nothing. "Updated" is when the PKGBUILD last changed.
+          for d in packages/*/; do
+            name=$(basename "$d")
+            mkdir -p "site-in/desc/$name"
+            [[ -f "$d/ktn.md" ]] && cp "$d/ktn.md" "site-in/desc/$name/"
+            git log -1 --format=%cI -- "$d/PKGBUILD" > "site-in/desc/$name/.updated"
+          done
+
+          # Built in forks: read ktn.md and .ktn-base from each repo's default branch. A repo
+          # without them still gets a card from its pkgdesc.
+          grep -vE '^\s*(#|$)' external.txt | while read -r repo _tag; do
+            dir="site-in/desc/${repo//\//_}"
+            mkdir -p "$dir"
+            for f in packaging/arch/ktn.md .ktn-base; do
+              # Write only on success, so a 404 body never lands as a descriptor.
+              if body=$(gh api -H 'Accept: application/vnd.github.raw' "repos/$repo/contents/$f" 2>/dev/null); then
+                printf '%s\n' "$body" > "$dir/$(basename "$f")"
+              fi
+            done
+          done
+
+      - name: Render
+        run: python3 site/render.py --db "site-in/${REPO_NAME}.db.tar.gz" --descriptors site-in/desc --out site-out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-site
+          path: site-out
+          retention-days: 7
+
+  # Runs on the ktn host. This workflow has no pull_request trigger, so only pushes to
+  # main, the schedule and manual runs ever reach the self-hosted runner.
+  deploy-site:
+    needs: site
+    runs-on: [self-hosted, ktn]
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-site
+          path: ${{ runner.temp }}/arch-site
+
+      - name: Swap in the new release
+        run: |
+          set -euo pipefail
+          root=/opt/services/ktn-arch # nginx: location /arch/ { alias $root/current/; }
+          rel="$root/releases/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$root/releases"
+          rm -rf "$rel"
+          cp -a "$RUNNER_TEMP/arch-site" "$rel"
+          # Atomic: build the new link beside the old one, then rename over it.
+          ln -sfn "$rel" "$root/current.new"
+          mv -T "$root/current.new" "$root/current"
+          # Keep the last three for rollback (repoint `current` by hand).
+          ls -1dt "$root"/releases/* | tail -n +4 | xargs -r rm -rf
+          echo "Deployed $(readlink "$root/current")"

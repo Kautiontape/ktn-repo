@@ -1,0 +1,121 @@
+name: build package
+
+# Reusable. A ktn fork calls this from its ktn-package.yml to build its Arch package from
+# packaging/arch/PKGBUILD.in with scripts/build-package.sh.
+#
+#   publish: true   (push to ktn)       build, then upload to the fork's `ktn-repo`
+#                                        release. ktn-repo's nightly publish pulls it into
+#                                        [ktn] through external.txt.
+#   publish: false  (push to sync/**)   build only. This is the green check that
+#                                        fork-sync's promote requires before it ships.
+#
+# Forks need no signing key: ktn-repo re-signs everything it indexes.
+# Contract and rationale: docs/design/2026-10-03-ktn-fork-packages.md.
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        description: 'Upload to the fork''s ktn-repo release (true on ktn, false on sync/**)'
+        type: boolean
+        default: false
+      ktn_repo_ref:
+        description: 'Ref of Kautiontape/ktn-repo whose build script to use'
+        type: string
+        default: main
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ktn-repo
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Kautiontape/ktn-repo
+          ref: ${{ inputs.ktn_repo_ref }}
+          path: ktn-repo
+
+      - name: Compare with the published version
+        id: vers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pkgname=$(sed -n "s/^pkgname=['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}$/\1/p" src/packaging/arch/PKGBUILD.in)
+          [[ -n "$pkgname" ]] || { echo "::error::no pkgname= in packaging/arch/PKGBUILD.in"; exit 1; }
+          pkgver=$(ktn-repo/scripts/build-package.sh --print-pkgver src)
+
+          # <pkgname>-<pkgver>-<pkgrel>-<arch>.pkg.tar.zst -> <pkgver>
+          published=""
+          if asset=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+                       --jq '.assets[].name' 2>/dev/null | grep -E "^${pkgname}-[^-]+-[^-]+-[^-]+\.pkg\.tar\.zst$" | head -1); then
+            rest=${asset#"${pkgname}-"}
+            published=${rest%%-*}
+          fi
+
+          skip=false
+          if [[ "${{ inputs.publish }}" == "true" && "$published" == "$pkgver" ]]; then
+            skip=true
+            echo "::notice::$pkgname $pkgver is already published; nothing to do"
+          fi
+          {
+            echo "pkgname=$pkgname"
+            echo "pkgver=$pkgver"
+            echo "published=$published"
+            echo "skip=$skip"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building $pkgname $pkgver (published: ${published:-none})"
+
+      - name: Build in an Arch container
+        if: steps.vers.outputs.skip != 'true'
+        env:
+          # Only a publish run must outrank what's live; the gate build just has to build.
+          NEWER_THAN: ${{ inputs.publish && steps.vers.outputs.published || '' }}
+        run: |
+          docker run --rm -v "$PWD:/work" -e NEWER_THAN archlinux:base-devel bash -euo pipefail -c '
+            pacman -Syu --noconfirm --needed git >/dev/null
+
+            # Install the declared deps as root so makepkg can run unprivileged without sudo.
+            ( set +u; source /work/src/packaging/arch/PKGBUILD.in
+              printf "%s\n" "${depends[@]:-}" "${makedepends[@]:-}" "${checkdepends[@]:-}" ) \
+              | grep -v "^$" | sort -u | xargs -r pacman -S --needed --noconfirm --asdeps >/dev/null
+
+            useradd -m builder
+            chown -R builder:builder /work
+            su builder -c "git config --global --add safe.directory /work/src &&
+              /work/ktn-repo/scripts/build-package.sh ${NEWER_THAN:+--newer-than $NEWER_THAN} /work/src /work/out"
+          '
+
+      - name: Upload to the ktn-repo release
+        if: inputs.publish && steps.vers.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PKGNAME: ${{ steps.vers.outputs.pkgname }}
+        run: |
+          set -euo pipefail
+          cd out
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --title "ktn package" --prerelease \
+              --notes "Built by Kautiontape/ktn-repo's build-package workflow and pulled into the [ktn] pacman repo. Install from [ktn], not from here."
+          fi
+          gh release upload "$RELEASE_TAG" --clobber ./*.pkg.tar.zst
+
+          # Keep only the package just built, so the release can't grow without bound.
+          current=$(find . -maxdepth 1 -name "${PKGNAME}-*.pkg.tar.zst" -printf '%f\n' | head -1)
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' \
+            | grep -E "^${PKGNAME}-[^-]+-[^-]+-[^-]+\.pkg\.tar\.zst$" \
+            | grep -vx "$current" \
+            | while read -r stale; do
+                echo "Deleting superseded asset: $stale"
+                gh release delete-asset "$RELEASE_TAG" "$stale" --yes || true
+              done
+          echo "::notice::Published $current; [ktn] picks it up at ktn-repo's next run (nightly 06:17 UTC)"
