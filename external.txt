@@ -3,3 +3,5 @@
 #
 # trilium builds its own package because the Electron toolchain lives in that repo.
 Kautiontape/trilium ktn-repo
+Kautiontape/xdg-desktop-portal-wlr ktn-repo
+Kautiontape/vesktop ktn-repo
