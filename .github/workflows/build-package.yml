@@ -81,7 +81,8 @@ jobs:
           # Only a publish run must outrank what's live; the gate build just has to build.
           NEWER_THAN: ${{ inputs.publish && steps.vers.outputs.published || '' }}
         run: |
-          docker run --rm -v "$PWD:/work" -e NEWER_THAN archlinux:base-devel bash -euo pipefail -c '
+          docker run --rm -v "$PWD:/work" -e NEWER_THAN -e HOST_IDS="$(id -u):$(id -g)" \
+            archlinux:base-devel bash -euo pipefail -c '
             pacman -Syu --noconfirm --needed git >/dev/null
 
             # Install the declared deps as root so makepkg can run unprivileged without sudo.
@@ -91,6 +92,9 @@ jobs:
 
             useradd -m builder
             chown -R builder:builder /work
+            # Hand the workspace back to the runner user, or the checkout post-steps
+            # cannot clean up .git/config afterwards.
+            trap "chown -R \"\$HOST_IDS\" /work" EXIT
             su builder -c "git config --global --add safe.directory /work/src &&
               /work/ktn-repo/scripts/build-package.sh ${NEWER_THAN:+--newer-than $NEWER_THAN} /work/src /work/out"
           '
@@ -99,6 +103,9 @@ jobs:
         if: inputs.publish && steps.vers.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          # out/ is not a git checkout (the fork is checked out under src/), so gh
+          # cannot infer the repository from the working directory.
+          GH_REPO: ${{ github.repository }}
           PKGNAME: ${{ steps.vers.outputs.pkgname }}
         run: |
           set -euo pipefail
