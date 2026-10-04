@@ -212,7 +212,19 @@ Pipeline: a `sync/**` push runs the build-only gate. The vercmp gate rejects a n
 
 ## Follow-ups
 
-### First frame of an idle source waits for damage (pre-existing, not the patch)
+### First frame of an idle source waits for damage — RESOLVED 2026-10-04
+
+**Root cause:** a consumer's PipeWire stream can report STREAMING before its node is scheduled by
+xdpw's driver, so frame 1 (queued the instant xdpw starts streaming) stays parked until the next
+graph cycle, and xdpw only triggers one when a new frame is ready, which for an idle source
+waits for damage. A race: about 1 share in 3. It was *not* Chromium dropping frames. Electron
+uses frame 1 whenever it arrives, and the GPU flags, Electron version and buffer type were all
+ruled out. **Fix:** xdpw fork commit `a552041`, which re-runs the graph 5× with backoff
+(~0.5 s) after STREAMING. Electron `desktopCapturer` test on an idle window: 5/15 misses before,
+0/15 after. Regression test: `contrib/ktn/first-frame-test/` in the xdpw fork. The notes below
+are the original investigation.
+
+#### Original notes (pre-existing, not the patch)
 
 After the chooser, Vesktop's Go Live modal waits until the shared source changes, because Chromium
 needs a first frame for the thumbnail.
@@ -268,5 +280,5 @@ Changes from the plan, and lessons:
   profile 1). libratbag keeps edits to disabled profiles in RAM only. See the comment in
   `sway/config.d/65-ptt` in the dotfiles.
 
-Still open: the first-frame delay and the preview chooser (Follow-ups above), and the upstream
-xdpw PR after the patch has soaked.
+Still open: the upstream xdpw PR (both patches) after they have soaked. The first-frame delay is
+resolved, and the preview chooser lives in the dotfiles (`docs/design/2026-10-04-xdpw-preview-picker.md`).
