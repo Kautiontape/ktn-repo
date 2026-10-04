@@ -100,6 +100,14 @@ contract, written up in `docs/design/2026-10-03-ktn-fork-packages.md`:
   publish a pkgver that doesn't sort above the one already released.
 - Upstream tracking is fork-sync in rebase mode (`ktn-upstream-sync.yml` plus
   `ktn-promote.yml`, as in Kautiontape/actual).
+- **Add the fork to the "Fork Sync Deployment" token** (the fine-grained PAT behind the
+  `SYNC_PR_TOKEN` org secret; GitHub → Settings → Developer settings → Personal access tokens →
+  Edit repository access). Without it, sync branches are pushed with `github.token`, which never
+  triggers `ktn-package`, so promote finds no check runs and refuses. Keep the token scoped
+  to the forks: the org secret is visible to every repo.
+- Bring a new fork up with Actions disabled, push `ktn`, make it the default branch, enable
+  Actions, `gh workflow disable` every upstream workflow (our `ktn-repo` pre-release fires
+  `release: published`), then `gh workflow run ktn-package.yml`.
 
 To build a fork locally on an Arch machine:
 
