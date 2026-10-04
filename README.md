@@ -112,7 +112,7 @@ contract, written up in `docs/design/2026-10-03-ktn-fork-packages.md`:
 To build a fork locally on an Arch machine:
 
 ```sh
-scripts/build-package.sh --syncdeps ~/Projects/<fork> /tmp/out
+scripts/build-package.sh --syncdeps ~/documents/apps/<fork> /tmp/out
 ```
 
 ## The /arch/ page

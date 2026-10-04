@@ -110,7 +110,7 @@ descriptor-only edit causes no rebuild. The nightly run re-renders the page inst
    ktn-repo with the default token, and a dispatch PAT was deliberately left out.
 
 Per-package specifics:
-- **vesktop-ktn**: the PKGBUILD is adapted from the local `~/Projects/vesktop-ptt-pkg`. It installs
+- **vesktop-ktn**: the PKGBUILD is adapted from the original hand-built `vesktop-ptt` package. It installs
   to `/opt/vesktop`, ships the launcher with flags-file support, and adds a desktop entry and icon.
   Makedepends are `nodejs pnpm git`. `check()` runs `pnpm testTypes`.
 - **xdg-desktop-portal-wlr-ktn**: a meson build mirroring Arch's PKGBUILD. It **ships
