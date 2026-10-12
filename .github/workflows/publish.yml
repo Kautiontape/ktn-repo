@@ -27,7 +27,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Fetch external packages
         env:
@@ -155,11 +155,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # .updated comes from each PKGBUILD's last commit date
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
@@ -199,7 +199,7 @@ jobs:
       - name: Render
         run: python3 site/render.py --db "site-in/${REPO_NAME}.db.tar.gz" --descriptors site-in/desc --out site-out
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: arch-site
           path: site-out
@@ -212,7 +212,7 @@ jobs:
     runs-on: [self-hosted, ktn]
     permissions: {}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: arch-site
           path: ${{ runner.temp }}/arch-site

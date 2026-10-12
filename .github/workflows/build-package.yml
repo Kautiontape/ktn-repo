@@ -34,11 +34,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: src
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Kautiontape/ktn-repo
           ref: ${{ inputs.ktn_repo_ref }}
