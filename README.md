@@ -13,12 +13,14 @@ SigLevel = Required
 Server = https://github.com/Kautiontape/ktn-repo/releases/download/repo
 ```
 
-Trust the signing key, then sync:
+Trust the signing key, then sync. The key isn't on any keyserver; the site serves it from
+`site/static/ktn-repo.pub`:
 
 ```sh
-sudo pacman-key --recv-keys 36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8
+curl -fsSLO https://kautiontape.com/arch/ktn-repo.pub
+sudo pacman-key --add ktn-repo.pub
 sudo pacman-key --lsign-key 36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8
-sudo pacman -Sy
+sudo pacman -Syu
 ```
 
 ## Packages
