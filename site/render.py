@@ -28,6 +28,7 @@ HERE = Path(__file__).resolve().parent
 REPO_SECTION = "ktn"
 SERVER = "https://github.com/Kautiontape/ktn-repo/releases/download/repo"
 KEY = "36EF1180D7CBA87C0C0F8CBCE480A935E543D3C8"
+KEY_URL = "https://kautiontape.com/arch/ktn-repo.pub"  # site/static/ktn-repo.pub
 REPO_URL = "https://github.com/Kautiontape/ktn-repo"
 
 md = MarkdownIt("commonmark", {"html": False})
@@ -207,6 +208,7 @@ def main():
         shutil.rmtree(out)
     out.mkdir(parents=True)
     shutil.copy(HERE / "static" / "style.css", out / "style.css")
+    shutil.copy(HERE / "static" / "ktn-repo.pub", out / "ktn-repo.pub")
 
     cards = []
     for name in sorted(pkgs):
@@ -216,7 +218,10 @@ def main():
         (out / name / "index.html").write_text(package_page(name, pkgs[name], meta, body))
 
     conf = f"[{REPO_SECTION}]\nSigLevel = Required\nServer = {SERVER}"
-    keys = f"sudo pacman-key --recv-keys {KEY}\nsudo pacman-key --lsign-key {KEY}\nsudo pacman -Sy"
+    # Not on any keyserver, so fetch the file; lsign by full fingerprint means a
+    # substituted download fails here instead of being trusted.
+    keys = (f"curl -fsSLO {KEY_URL}\nsudo pacman-key --add ktn-repo.pub\n"
+            f"sudo pacman-key --lsign-key {KEY}\nsudo pacman -Syu")
     (out / "index.html").write_text(render(
         "index.html", conf=esc(conf), keys=esc(keys), key=esc(KEY), cards="\n".join(cards),
         count=len(pkgs), repo=esc(REPO_URL)))
