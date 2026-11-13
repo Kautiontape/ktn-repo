@@ -1,6 +1,6 @@
 ---
 package: yeetbin-app
-summary: The `yeet` CLI — throw a file or stdin at yeetbin and get a shareable link back
+summary: The `yeet` CLI — throw a file or stdin at yeetbin, or keep it local in the yeetbin browser extension
 upstream: https://github.com/Kautiontape/yeetbin-app
 ---
 ## What it is
@@ -8,6 +8,11 @@ upstream: https://github.com/Kautiontape/yeetbin-app
 `yeet`, the command-line client for [yeetbin](https://yeet.kautiontape.com). Pass it a file
 or pipe stdin, and it uploads, prints the link and opens it in your browser. It's one static
 Go binary with no runtime dependencies.
+
+With the local yeetbin browser extension loaded and `yeet --install-native-host` run once,
+yeets stay in your browser instead, rendered exactly like the server would. `--public` uploads
+when you want a link to share. If the browser isn't running, yeet refuses rather than falling
+back to the public server.
 
 ## Why it exists
 
