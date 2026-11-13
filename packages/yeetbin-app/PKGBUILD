@@ -1,8 +1,8 @@
 # Maintainer: Shawn Squire <shawn@shawnsquire.me>
 pkgname=yeetbin-app
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc="Yeet a file or stdin at a yeetbin instance and get a shareable link back"
+pkgdesc="Yeet a file or stdin at yeetbin, or keep it local in the yeetbin browser extension"
 arch=('x86_64')
 url="https://github.com/Kautiontape/yeetbin-app"
 license=('MIT')
@@ -12,8 +12,9 @@ makedepends=('go')
 conflicts=('yeet')
 # Otherwise makepkg splits a second yeetbin-app-debug package off the Go binary.
 options=('!debug')
+install=$pkgname.install
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('68a8858e6b1bac64e51004dac5ad34813ed79111dbfd23bbd127dc1e1924a576')
+sha256sums=('8544a5da3ad3aaa4b5f01e3da12b1aa79481163c1c12ba1aa7753cf9d9c223f6')
 
 build() {
 	cd "$pkgname-$pkgver"

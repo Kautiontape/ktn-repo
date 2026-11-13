@@ -1,0 +1,15 @@
+post_install() {
+	cat <<'MSG'
+==> To keep yeets off the internet, load the local yeetbin browser extension, then run
+    this once as your own user (not root):
+      yeet --install-native-host
+    Until then, yeet uploads to the public instance as before.
+MSG
+}
+
+post_upgrade() {
+	# $2 is the old version: only announce on the upgrade that introduced local yeets.
+	if (( $(vercmp "$2" 0.2.0) < 0 )); then
+		post_install
+	fi
+}
